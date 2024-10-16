@@ -25,7 +25,6 @@ jobs:
               "Needs a new dev", 
               "squash-merge", 
               "Keep Open", 
-              "Stable"
             ];
             
             async function removeLabel(label) {
@@ -42,11 +41,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: `Maintainers: Please [Sync Translations](https://github.com/ankidroid/Anki-Android/actions/workflows/sync_translations.yml) to produce a commit with only the automated changes from this PR.
-            
-            Read more about updating strings on the wiki,
-            - [localization-administration](https://github.com/ankidroid/Anki-Android/wiki/Development-Guide#localization-administration)
-            - [download-localized-strings](https://github.com/ankidroid/Anki-Android/wiki/Development-Guide#download-localized-strings)`
+                body: `Maintainers: Please to produce a commit with only the automated changes from this PR.`
               })
             }
             
@@ -111,11 +106,7 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
                 body: `> [!IMPORTANT]
-            > **Maintainers**: This PR contains https://github.com/ankidroid/Anki-Android/labels/Strings changes
-            
-            1. [Sync Translations](https://github.com/ankidroid/Anki-Android/actions/workflows/sync_translations.yml) before merging this PR and wait for the action to complete
-            2. Review and merge the [auto-generated PR](https://github.com/ankidroid/Anki-Android/pulls/mikehardy-machineaccount) in order to sync all user-submitted translations
-            3. [Sync Translations again](https://github.com/ankidroid/Anki-Android/actions/workflows/sync_translations.yml) and merge the [PR](https://github.com/ankidroid/Anki-Android/pulls/mikehardy-machineaccount) so the huge automated string changes caused by merging this PR are by themselves and easy to review`
+            > **Maintainers**: This PR contains https://github.com/karya-inc/karya-android-client/labels/Strings changes`
               })
             }
 
@@ -159,35 +150,3 @@ jobs:
                 removeLabel([stringsLabel]);
               }
             }
-
-  add_new_contributor_label:
-    if: github.event.action == 'opened'
-    permissions:
-      contents: read
-      pull-requests: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/github-script@v7
-        with:
-          script: |
-            const creator = context.payload.sender.login
-            const opts = github.rest.issues.listForRepo.endpoint.merge({
-              ...context.issue,
-              creator,
-              state: 'all'
-            })
-            const issues = await github.paginate(opts)
-            for (const issue of issues) {
-              if (issue.number === context.issue.number) {
-                continue
-              }
-              if (issue.pull_request) {
-                return // creator is already a contributor
-              }
-            }
-            await github.rest.issues.addLabels({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['New contributor']
-            })
