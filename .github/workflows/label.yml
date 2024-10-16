@@ -1,0 +1,161 @@
+name: Add/Remove Labels
+
+on:
+  pull_request_target:
+    types: [ opened, closed ]
+  push:
+
+jobs:
+  merge_job:
+    if: github.event.pull_request.merged == true
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            let removeLabelsList = [
+              "Pending Merge", 
+              "Needs Author Reply", 
+              "Needs Review", 
+              "Review High Priority", 
+              "Needs Second Approval",
+              "Blocked by dependency", 
+              "Needs a new dev", 
+              "squash-merge", 
+              "Keep Open", 
+              "Stable"
+            ];
+            
+            async function removeLabel(label) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: label
+              });
+            }
+            
+            async function addPostMergeComments() {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `Maintainers: Please [Sync Translations](https://github.com/ankidroid/Anki-Android/actions/workflows/sync_translations.yml) to produce a commit with only the automated changes from this PR.
+            
+            Read more about updating strings on the wiki,
+            - [localization-administration](https://github.com/ankidroid/Anki-Android/wiki/Development-Guide#localization-administration)
+            - [download-localized-strings](https://github.com/ankidroid/Anki-Android/wiki/Development-Guide#download-localized-strings)`
+              })
+            }
+            
+            let result = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            if (result.data !== null && result.data.length > 0) {
+              let labels = result.data;
+              for (let label of labels) {
+                  if (removeLabelsList.includes(label.name)) {
+                    console.log("Removed: ", label.name);
+                    removeLabel(label.name);
+                  }
+            
+                  // add post merge comments for 'strings' labeled PR
+                  if (label.name == "Strings") {
+                    addPostMergeComments();
+                  }
+              }
+            }
+
+  add_label:
+    if: (!(github.event.action == 'closed' && github.event.pull_request.merged != true)) && github.event.pull_request.merged != true && github.event.pull_request.head.ref != 'i18n_sync'
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const I18N_FILES = [
+                  "values",
+            ];
+            
+            let stringsLabel = "Strings";
+            
+            async function addLabel(labels) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: labels
+              });
+            }
+            
+            async function removeLabel(labels) {
+                await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    name: labels,
+                });
+            }
+            
+            async function addComments() {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `> [!IMPORTANT]
+            > **Maintainers**: This PR contains https://github.com/criticalAY/Sur/labels/Strings changes
+            
+            1. Sync the translations
+            2. Review and merge 
+              })
+            }
+            
+            const changedFiles = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            
+            // loop through list of files in current pr, then check if filename contains in i18n file name,
+            // set boolean to true and use the boolean in outer loop to add label
+            let fileChanged = false;
+            for (let files of changedFiles.data) {
+              for (let i18n of I18N_FILES) {
+                if (files.filename.includes(i18n)) {
+                  fileChanged = true;
+                  break;
+                }
+              }
+            
+              if (fileChanged) {
+                addLabel([stringsLabel]);
+                addComments();
+                break;
+              }
+            }
+            
+            async function getPullRequest() {
+                return await github.rest.pulls.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: context.issue.number,
+                });
+            }
+            
+            // if no file changed, remove label
+            const pullRequestData = await getPullRequest();
+            if (!fileChanged) {
+              if (pullRequestData.data.labels.find(label => label.name === stringsLabel)) {
+                console.log("Removing #${stringsLabel} label from PR #${context.issue.number}");
+                removeLabel([stringsLabel]);
+              }
+            }
