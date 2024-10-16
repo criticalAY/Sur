@@ -82,22 +82,7 @@ jobs:
         with:
           script: |
             const I18N_FILES = [
-                "01-core",
-                "02-strings",
-                "03-dialogs",
-                "04-network",
-                "05-feedback",
-                "06-statistics",
-                "07-cardbrowser",
-                "08-widget",
-                "09-backup",
-                "10-preferences",
-                "11-arrays",
-                "16-multimedia-editor",
-                "17-model-manager",
-                "18-standard-models",
-                "20-search-preference",
-                "marketdescription",
+                "values",
             ];
 
             let stringsLabel = "Strings";
