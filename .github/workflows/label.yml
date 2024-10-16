@@ -3,6 +3,7 @@ name: Add/Remove Labels
 on:
   pull_request_target:
     types: [ opened, closed ]
+  push:
 
 jobs:
   merge_job:
