@@ -18,4 +18,6 @@
     <string name="cd_play_track">Play %s, by %s</string>
     <string name="message_search_results">No results to display</string>
     <string name="hint_search">Search for a track, artist or album…</string>
+
+    <string name="test">String test</string>
 </resources>
